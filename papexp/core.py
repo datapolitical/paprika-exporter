@@ -14,8 +14,8 @@ import requests
 from dotenv import load_dotenv
 load_dotenv()
 
-email = os.environ['EMAIL']
-password = os.environ['PASSWORD']
+email = os.environ['PAPRIKA_EMAIL']
+password = os.environ['PAPRIKA_PASSWORD']
 
 c = HTTPSConnection("www.paprikaapp.com")
 
