@@ -60,6 +60,7 @@ def export_recipes():
     data = res.read()
 
     recipes = []
+    downloaded = 0
 
     try:
         recipe_items = json.loads(data)['result']
@@ -91,12 +92,13 @@ def export_recipes():
                 print('  no photo data for', recipe['name'], '- skipping')
 
 
-        if recipe.get('photo') and recipe.get('photo_url') and recipe['photo_url'].startswith('http://uploads.paprikaapp.com.s3.amazonaws.com'):
+        if recipe.get('photo') and recipe.get('photo_url') and 'uploads.paprikaapp.com.s3.amazonaws.com' in recipe['photo_url']:
             resp = requests.get(recipe['photo_url'], stream=True)
             local_file = open('assets/images/recipes/'+recipe['photo'], 'wb')
             resp.raw.decode_content = True
             shutil.copyfileobj(resp.raw, local_file)
             recipe['image_url'] = 'images/recipes/'+recipe['photo']
+            downloaded += 1
 
 
         for photo_key in ('photo_url', 'photo', 'hash', 'photo_hash', 'photo_large'):
@@ -142,6 +144,7 @@ def export_recipes():
         photos = []
     print("\n\n")
     print("Photos")
+    photo_downloads = 0
     for item in photos:
         c.request('GET', '/api/v1/sync/photo/'+item['uid']+'/', headers=headers)
         res = c.getresponse()
@@ -164,10 +167,17 @@ def export_recipes():
         photo_name = photo['name']
         newphoto[photo_name] = 'images/recipes/'+photo['filename']
         rec[0]['photos'].append(newphoto)
+        if not rec[0].get('image_url'):
+            rec[0]['image_url'] = 'images/recipes/'+photo['filename']
         resp = requests.get(photo['photo_url'], stream=True)
         local_file = open('assets/images/recipes/'+photo['filename'], 'wb')
         resp.raw.decode_content = True
         shutil.copyfileobj(resp.raw, local_file)
+        photo_downloads += 1
+
+    print('recipe images downloaded:', downloaded)
+    print('photo-collection images downloaded:', photo_downloads)
+    print('recipes with images:', sum(1 for r in recipes if r.get('image_url')))
 
     with open(r'./_data/recipes.yaml', 'w') as file:
         yaml.safe_dump(recipes, file)
