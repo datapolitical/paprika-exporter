@@ -176,21 +176,22 @@ def export_recipes():
         if photo is None:
             print('  no data for photo item', item.get('uid'), '- skipping')
             continue
-        rec = [x for x in recipes if x['uid'] == photo.get('recipe_uid')]
+        link_uid = photo.get('recipe_uid') or item.get('recipe_uid') or ''
+        rec = [x for x in recipes if (x.get('uid') or '').upper() == str(link_uid).upper()] if link_uid else []
         if not rec:
-            print('skipping photo with no matching recipe:', photo.get('name', photo.get('uid', '?')))
+            print('skipping photo with no matching recipe:', photo.get('name') or item.get('name') or photo.get('uid') or item.get('uid') or '?')
             continue
         if not photo.get('photo_url'):
-            print('skipping photo without photo_url:', photo.get('name', photo.get('uid', '?')))
+            print('skipping photo without photo_url:', photo.get('name') or item.get('name') or photo.get('uid') or item.get('uid') or '?')
             continue
         filename = (photo.get('filename') or '').split('/')[-1]
         if not filename:
-            print('skipping photo without filename:', photo.get('name', photo.get('uid', '?')))
+            print('skipping photo without filename:', photo.get('name') or item.get('name') or photo.get('uid') or item.get('uid') or '?')
             continue
         print(rec[0]['name'])
         # create newphoto dict with uid and filename
         newphoto = {}
-        photo_name = photo['name']
+        photo_name = photo.get('name') or item.get('name') or 'photo'
         newphoto[photo_name] = 'images/recipes/'+filename
         rec[0]['photos'].append(newphoto)
         if not rec[0].get('image_url'):
