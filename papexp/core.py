@@ -5,6 +5,7 @@ import os
 import shutil
 from base64 import b64encode
 from http.client import HTTPSConnection
+from urllib.parse import urlparse
 
 import pathlib
 
@@ -185,6 +186,11 @@ def export_recipes():
             print('skipping photo without photo_url:', photo.get('name') or item.get('name') or photo.get('uid') or item.get('uid') or '?')
             continue
         filename = (photo.get('filename') or '').split('/')[-1]
+        if not filename:
+            # current API photo items carry no filename; derive one from the uid
+            ext = os.path.splitext(urlparse(photo.get('photo_url') or '').path)[1] or '.jpg'
+            base = photo.get('uid') or item.get('uid') or ''
+            filename = (base + ext) if base else ''
         if not filename:
             print('skipping photo without filename:', photo.get('name') or item.get('name') or photo.get('uid') or item.get('uid') or '?')
             continue
