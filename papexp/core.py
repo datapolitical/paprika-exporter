@@ -124,6 +124,11 @@ def export_recipes():
                 categoryList.append(categories.get(category, category))
             recipe['categories'] = categoryList
 
+        # picture_tag can only process local files; external source URLs
+        # (e.g. imported-recipe image_urls) hard-fail the jekyll build
+        if recipe.get('image_url') and str(recipe['image_url']).startswith(('http://', 'https://')):
+            recipe['image_url'] = None
+
         recipes.append(recipe)
 
     # this gets all photos
