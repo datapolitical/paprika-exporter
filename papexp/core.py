@@ -46,7 +46,12 @@ def export_recipes():
     res = c.getresponse()
     data = res.read()
     categories = {}
-    for item in json.loads(data)['result']:
+    try:
+        category_items = json.loads(data)['result']
+    except (KeyError, ValueError):
+        print('no category list in payload; continuing without categories')
+        category_items = []
+    for item in category_items:
         categories[item['uid']] = item['name']
 
 
@@ -56,14 +61,24 @@ def export_recipes():
 
     recipes = []
 
-    for item in json.loads(data)['result']:
+    try:
+        recipe_items = json.loads(data)['result']
+    except (KeyError, ValueError):
+        print('no recipe list in payload; aborting export (keeping last recipes.yaml)')
+        return
+
+    for item in recipe_items:
         c.request('GET', '/api/v1/sync/recipe/'+item['uid']+'/', headers=headers)
         res = c.getresponse()
         data = res.read()
-        recipe = json.loads(data)['result']
+        try:
+            recipe = json.loads(data)['result']
+        except (KeyError, ValueError):
+            print('  no data for recipe', item['uid'], '- skipping')
+            continue
         # https://gist.github.com/mattdsteele/7386ec363badfdeaad05a418b9a1f30a
         print(recipe['name'])
-        if recipe['photo_large']:
+        if recipe.get('photo_large'):
             recipe['photo'] = recipe['photo_large']
             addr = recipe['photo_large'][:-4]
             c.request('GET', "/api/v1/sync/photo/"+addr+"/", headers=headers)
@@ -76,7 +91,7 @@ def export_recipes():
                 print('  no photo data for', recipe['name'], '- skipping')
 
 
-        if recipe['photo'] and recipe['photo_url'] and recipe['photo_url'].startswith('http://uploads.paprikaapp.com.s3.amazonaws.com'):
+        if recipe.get('photo') and recipe.get('photo_url') and recipe['photo_url'].startswith('http://uploads.paprikaapp.com.s3.amazonaws.com'):
             resp = requests.get(recipe['photo_url'], stream=True)
             local_file = open('assets/images/recipes/'+recipe['photo'], 'wb')
             resp.raw.decode_content = True
@@ -84,11 +99,8 @@ def export_recipes():
             recipe['image_url'] = 'images/recipes/'+recipe['photo']
 
 
-        del recipe['photo_url']
-        del recipe['photo']
-        del recipe['hash']
-        del recipe['photo_hash']
-        del recipe['photo_large']
+        for photo_key in ('photo_url', 'photo', 'hash', 'photo_hash', 'photo_large'):
+            recipe.pop(photo_key, None)
 
         recipe['photos'] = []
 
@@ -109,7 +121,7 @@ def export_recipes():
         if recipe['categories']:
             categoryList = []
             for category in recipe['categories']:
-                categoryList.append(categories[category])
+                categoryList.append(categories.get(category, category))
             recipe['categories'] = categoryList
 
         recipes.append(recipe)
@@ -118,17 +130,28 @@ def export_recipes():
     c.request('GET', '/api/v1/sync/photos/', headers=headers)
     res = c.getresponse()
     data = res.read()
-    photos = json.loads(data)['result']
+    try:
+        photos = json.loads(data)['result']
+    except (KeyError, ValueError):
+        print('no photo list in payload; skipping photo export')
+        photos = []
     print("\n\n")
     print("Photos")
-    for item in json.loads(data)['result']:
+    for item in photos:
         c.request('GET', '/api/v1/sync/photo/'+item['uid']+'/', headers=headers)
         res = c.getresponse()
         data = res.read()
-        photo = json.loads(data)['result']
+        try:
+            photo = json.loads(data)['result']
+        except (KeyError, ValueError):
+            print('  no data for photo item', item.get('uid'), '- skipping')
+            continue
         rec = [x for x in recipes if x['uid'] == photo.get('recipe_uid')]
         if not rec:
             print('skipping photo with no matching recipe:', photo.get('name', photo.get('uid', '?')))
+            continue
+        if not photo.get('photo_url'):
+            print('skipping photo without photo_url:', photo.get('name', photo.get('uid', '?')))
             continue
         print(rec[0]['name'])
         # create newphoto dict with uid and filename
