@@ -123,7 +123,10 @@ def export_recipes():
         res = c.getresponse()
         data = res.read()
         photo = json.loads(data)['result']
-        rec = [x for x in recipes if x['uid'] == photo['recipe_uid']]
+        rec = [x for x in recipes if x['uid'] == photo.get('recipe_uid')]
+        if not rec:
+            print('skipping photo with no matching recipe:', photo.get('name', photo.get('uid', '?')))
+            continue
         print(rec[0]['name'])
         # create newphoto dict with uid and filename
         newphoto = {}
