@@ -69,8 +69,11 @@ def export_recipes():
             c.request('GET', "/api/v1/sync/photo/"+addr+"/", headers=headers)
             res = c.getresponse()
             data = res.read()
-            photoData = json.loads(data)['result']
-            recipe['photo_url'] = photoData['photo_url']
+            try:
+                photoData = json.loads(data)['result']
+                recipe['photo_url'] = photoData['photo_url']
+            except (KeyError, ValueError):
+                print('  no photo data for', recipe['name'], '- skipping')
 
 
         if recipe['photo'] and recipe['photo_url'] and recipe['photo_url'].startswith('http://uploads.paprikaapp.com.s3.amazonaws.com'):
